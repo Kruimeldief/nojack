@@ -1,0 +1,11 @@
+{
+  "name": "nojack",
+  "version": "0.1.0",
+  "description": "Clean strings from unwanted characters and words.",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Dennis Kruijt",
+  "license": "ISC"
+}
