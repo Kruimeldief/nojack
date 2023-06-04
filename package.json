@@ -7,5 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Dennis Kruijt",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "ts-transformer-keys": "^0.4.4",
+    "ttypescript": "^1.5.15",
+    "typescript": "^5.0.4"
+  }
 }
