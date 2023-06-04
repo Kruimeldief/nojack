@@ -69,7 +69,7 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  public add(key: T, replaceValue: string, ...mocks: string[]): this
+  public addSeries(key: T, replaceValue: string, ...mocks: string[]): this
   {
     if (typeof replaceValue !== 'string')
     {
@@ -152,7 +152,7 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  public addTLinksBidirectional(key: T, replaceValue: string, ...threads: string[][]): this
+  public addLinksBidirectional(key: T, replaceValue: string, ...threads: string[][]): this
   {
     if (typeof replaceValue !== "string")
     {
@@ -196,7 +196,7 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  public remove(key: T, ...mocks: string[]): this
+  public removeSeries(key: T, ...mocks: string[]): this
   {
     const map = this.getMap(key);
 
@@ -346,5 +346,22 @@ export class Nomock<T extends string | number | symbol> {
   public count(string: string, ...keys: T[]): number
   {
     return this.cleanCount(string, ...keys)[1];
+  }
+
+  public remove(string: string, ...keys: T[]): string
+  {
+    for (const key of keys)
+    {
+      const regex = this._regex.get(key);
+
+      if (typeof regex === "undefined")
+      {
+        continue;
+      }
+
+      string = string.replace(regex, '');
+    }
+
+    return string;
   }
 }
