@@ -12,7 +12,7 @@ export interface INojackOptions {
 /**
  * Nojack.
  */
-export class Nojack<CategoryT extends number = number> {
+export class Nojack<T> {
 
   /**
    * Value to replace any matching blacklisted strings.
@@ -22,7 +22,7 @@ export class Nojack<CategoryT extends number = number> {
   /**
    * Hash-table with blacklisted strings.
    */
-  private _blacklist: Map<string, CategoryT>;
+  private _blacklist: Map<string, T>;
 
   /**
    * Hash-table with whitelisted strings.
@@ -53,11 +53,11 @@ export class Nojack<CategoryT extends number = number> {
     this._splitChar = ' ';
     this._maxParts = 6;
 
-    this._blacklist = new Map<string, CategoryT>();
+    this._blacklist = new Map<string, T>();
     this._whitelist = new Map<string, boolean>();
   }
 
-  public blacklist(category: CategoryT, ...strings: string[]): void {
+  public blacklist(category: T, ...strings: string[]): void {
     for (let i = 0, len = strings.length; i < len; i++) {
       this._blacklist.set(String(strings[i]), category);
     }
@@ -112,7 +112,7 @@ export class Nojack<CategoryT extends number = number> {
 
   public detectProfanity(strings: string | string[],
                          forEach: (profanity: string,
-                                   category: CategoryT,
+                                   category: T,
                                    start: number,
                                    end: number) => any)
   {
@@ -136,7 +136,7 @@ export class Nojack<CategoryT extends number = number> {
         .slice(index, end)
         .join(this._splitChar);
 
-      const category: CategoryT | undefined = this._blacklist.get(slice);
+      const category: T | undefined = this._blacklist.get(slice);
 
       if (typeof category === 'undefined') {
         continue;
@@ -172,8 +172,8 @@ export class Nojack<CategoryT extends number = number> {
     return Boolean(this.findProfanity(string).length);
   }
 
-  public findProfanity(string: string): CategoryT[] {
-    const categories: CategoryT[] = [];
+  public findProfanity(string: string): T[] {
+    const categories: T[] = [];
 
     this.detectProfanity(string, (_profanity, category) => {
       categories.push(category);

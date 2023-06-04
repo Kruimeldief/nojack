@@ -1,98 +1,252 @@
 import { formatRegex } from "./util";
 
-/**
- * Classifications of character types.
- * The order (top to bottom) determines the order of detection.
- */
-enum MockType {
-  emoji,
-  confusable,
-  invisible,
-  emoticon,
-  number,
-  whitelist,
-  ignoreable,
-}
-
 const defaultRegex: RegExp = /^$/;
 
-/**
- * Object with a regular expression for each MockType key.
- */
-type RegexObject = Record<keyof typeof MockType, RegExp>;
+interface INomockOptions {
+  shouldThrowBuildError: boolean,
+}
 
-/**
- * Object with a Map object for each MockType key.
- */
-type MapObject = Record<keyof typeof MockType, Map<string, string>>;
-
-/**
- * Object with a Record object for each MockType key.
- */
-type RecordObject = Record<keyof typeof MockType, Record<string, string>>;
+interface IRegexOptions {
+  flags: string,
+  isWild: boolean,
+  enforce?: "brackets" | "separators",
+}
 
 /**
  * Nomock object.
  */
-export class Nomock {
+export class Nomock<T extends string | number | symbol> {
 
   /**
-   * Singleton instance.
+   * Map with regular expressions.
    */
-  private static _instance?: Nomock;
+  private readonly _regex: Map<T, RegExp>;
 
   /**
-   * Singleton instance.
+   * Map with string maps.
    */
-  public static get instance(): Nomock {
-    return typeof this._instance === 'undefined'
-      ? this._instance = new Nomock()
-      : this._instance;
-  }
+  private readonly _map: Map<T, Map<string, string>>;
 
   /**
-   * Object with regular expressions.
+   * All constructor options.
    */
-  private readonly regex: RegexObject;
-
-  /**
-   * Object with string maps.
-   */
-  private readonly map: MapObject;
+  private readonly _options: INomockOptions;
 
   /**
    * Private constructor.
    */
-  private constructor() {
-    this.map = {
-      confusable: new Map<keyof typeof MockType, string>(),
-      emoji: new Map<keyof typeof MockType, string>(),
-      emoticon: new Map<keyof typeof MockType, string>(),
-      number: new Map<keyof typeof MockType, string>(),
-      whitelist: new Map<keyof typeof MockType, string>(),
-      ignoreable: new Map<keyof typeof MockType, string>(),
-      invisible: new Map<keyof typeof MockType, string>(),
-    };
+  public constructor(options?: INomockOptions)
+  {
+    new Map<string[], string>();
+    this._map = new Map<T, Map<string, string>>();
+    this._regex = new Map<T, RegExp>();
 
-    this.regex = {
-      confusable: defaultRegex,
-      emoji: defaultRegex,
-      emoticon: defaultRegex,
-      number: defaultRegex,
-      whitelist: defaultRegex,
-      ignoreable: defaultRegex,
-      invisible: defaultRegex,
+    this._options = {
+      shouldThrowBuildError: true,
     };
+    Object.assign(this._options, options);
   }
-  
-  public build() {
 
+  private getMap(key: T): Map<string, string>
+  {
+    let map = this._map.get(key);
+
+    if (typeof map === 'undefined')
+    {
+      map = new Map<string, string>();
+      this._map.set(key, map);
+    }
+
+    return map;
+  }
+
+  private throwError(error: Error): this
+  {
+    if (this._options.shouldThrowBuildError)
+      {
+        throw error;
+      }
+    return this;
+  }
+
+  public add(key: T, replaceValue: string, ...mocks: string[]): this
+  {
+    if (typeof replaceValue !== 'string')
+    {
+      return this.throwError(
+        new TypeError("Replace value must be of type string.")
+      );
+    }
+
+    const map = this.getMap(key);
+
+    for (let i = 0, len = mocks.length; i < len; i++)
+    {
+      const mock: string = mocks[i];
+
+      if (typeof mock !== "string")
+      {
+        this.throwError(
+          new TypeError("Mock value on index " + i + " must be of type string.")
+        );
+        continue;
+      }
+
+      map.set(mock, replaceValue);
+    }
+
+    return this;
+  }
+
+  public addParallels(key: T, replaceValues: string[], ...mocks: string[][]): this
+  {
+    const map = this.getMap(key);
+
+    for (let i = 0, len = mocks.length; i < len; i++)
+    {
+      const replaceValue: string = replaceValues[i];
+
+      if (typeof replaceValue !== "string")
+      {
+        this.throwError(
+          new TypeError("Replace value on index " + i + " must be of type string.")
+        );
+        continue;
+      }
+
+      for (let j = 0, len = mocks[i].length; i < len; j++)
+      {
+        const mock: string = mocks[i][j];
+
+        if (typeof mock !== "string")
+        {
+          this.throwError(
+            new TypeError("Mock value on index " + j + " in array on index " + i + " must be of type string.")
+          );
+          continue;
+        }
+
+        map.set(mock, replaceValue);
+      }
+    }
+
+    return this;
+  }
+
+  public addLinks(key: T, replaceValue: string, ...threads: string[][]): this
+  {
+    if (typeof replaceValue !== "string")
+    {
+      return this.throwError(
+        new TypeError("Replace value must be of type string.")
+      );
+    }
+
+    const map = this.getMap(key);
+
+    for (const thread of this.createLinks(...threads))
+    {
+      map.set(thread, replaceValue);
+    }
+
+    return this;
+  }
+
+  public addTLinksBidirectional(key: T, replaceValue: string, ...threads: string[][]): this
+  {
+    if (typeof replaceValue !== "string")
+    {
+      return this.throwError(
+        new TypeError("Replace value must be of type string.")
+      );
+    }
+
+    const map = this.getMap(key);
+
+    for (const thread of this.createLinks(...threads))
+    {
+      map.set(thread, replaceValue);
+    }
+
+    for (const thread of this.createLinks(...[...threads].reverse()))
+    {
+      map.set(thread, replaceValue);
+    }
+
+    return this;
+  }
+
+  public addLinksMirror(key: T, replaceValue: string, ...threads: string[][]): this
+  {
+    if (typeof replaceValue !== "string")
+    {
+      return this.throwError(
+        new TypeError("Replace value must be of type string.")
+      );
+    }
+
+    const map = this.getMap(key);
+
+    for (const thread of this.createLinks(...threads)
+      .map(v => v + v.slice(0, -1).split('').reverse().join('')))
+    {
+      map.set(thread, replaceValue);
+    }
+
+    return this;
+  }
+
+  public remove(key: T, ...mocks: string[]): this
+  {
+    const map = this.getMap(key);
+
+    for (let i = 0, len = mocks.length; i < len; i++)
+    {
+      const mock: string = mocks[i];
+
+      if (typeof mock !== "string")
+      {
+        this.throwError(
+          new TypeError("Mock value on index " + i + " must be of type string.")
+        );
+        continue;
+      }
+
+      map.delete(mock);
+    }
+
+    return this;
+  }
+
+  private createLinks(...threads: string[][]): string[]
+  {
+    for (let i = 0, len = threads.length; i < len; i++)
+    {
+      for (let j = 0, len = threads[i].length; j < len; j++)
+      {
+        if (typeof threads[i][j] !== "string")
+        {
+          this.throwError(
+            new TypeError("Thread value on index " + j + " in array on index " + i + " must be of type string.")
+          );
+        }
+      }
+    }
+
+    let results: string[] = threads[0];
+
+    for (let i = 1, len = threads.length; i < len; i++)
+    {
+      results = results.flatMap(v1 => threads.map(v2 => v1 + v2));
+    }
+
+    return results;
   }
 
   private createRegex(keyList: string[],
                       flags: string,
                       isWild: boolean,
-                      enforce: 'brackets' | 'separators')
+                      enforce?: 'brackets' | 'separators')
   {
     let oneChars: string[] = [];
     let multiChars: string[] = [];
@@ -133,8 +287,64 @@ export class Nomock {
     return defaultRegex;
   }
 
-  public clean(string: string): string
+  public build(options?: Partial<Record<T, IRegexOptions>>): this
   {
-    return string;
+    for (const key of Array.from<T>(this._map.keys()))
+    {
+      const map = this._map.get(key);
+
+      const opts: IRegexOptions = {
+        flags: 'g',
+        isWild: true,
+      };
+      Object.assign(opts, options?.[key]);
+
+      const regex = this.createRegex(Array.from(map?.values() || []),
+                                     opts.flags,
+                                     opts.isWild,
+                                     opts.enforce);
+
+      this._regex.set(key, regex);
+    }
+
+    return this;
+  }
+
+  private cleanCount(string: string, ...keys: T[]): [string, number]
+  {
+    let count: number = 0;
+
+    for (const key of keys)
+    {
+      const regex = this._regex.get(key);
+      const map = this._map.get(key);
+
+      if (typeof regex === "undefined" || typeof map === "undefined")
+      {
+        continue;
+      }
+
+      string = string.replace(regex, char =>
+      {
+        count++;
+
+        const replaceValue = map.get(char);
+        return typeof replaceValue === "undefined"
+          ? char
+          : replaceValue;
+      });
+    }
+
+    return [string, count];
+  }
+
+  public clean(string: string, ...keys: T[]): string
+  {
+    return this.cleanCount(string, ...keys)[0];
+  }
+
+  public count(string: string, ...keys: T[]): number
+  {
+    return this.cleanCount(string, ...keys)[1];
   }
 }

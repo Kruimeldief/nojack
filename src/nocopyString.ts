@@ -2,9 +2,33 @@ import { Nocopy } from "./nocopy";
 import { Nomock } from "./nomock";
 
 /**
- * Nocopy object for string modifications.
+ * Enum to be used in `filter.ts` as a preset of Nomock data. See folder `json` in root.
+ */
+enum MockTypes {
+  emoji,
+  confusable,
+  invisible,
+  emoticon,
+  number,
+}
+
+/**
+ * Temporary class that needs to be merged with `filter.ts`.
  */
 export class NocopyString extends Nocopy<string> {
+
+  /**
+   * Temporary Nomock object until `filter.ts` is finished.
+   */
+  private static readonly nomock = new Nomock<keyof typeof MockTypes>({ shouldThrowBuildError: true })
+    .add("confusable", 'E', '€', '3')
+    .build({
+      "confusable": {
+        flags: "gi",
+        isWild: true,
+        enforce: "brackets"
+      }
+    });
 
   /**
    * Index of clean string in the data array.
@@ -17,7 +41,7 @@ export class NocopyString extends Nocopy<string> {
   public get clean(): string {
     return typeof this._iClean === 'number'
       ? this._data[this._iClean]
-      : this._data[( this._iClean = this.getIndex(Nomock.instance.clean(this.value)) )];
+      : this._data[( this._iClean = this.getIndex(NocopyString.nomock.clean(this.value)) )];
   }
 
   /**

@@ -1,7 +1,7 @@
 /**
  * Nocopy dictionary.
  */
-export class Nocopy<T> {
+export abstract class Nocopy<T extends string | number | symbol> {
 
   /**
    * Dictionary of previously processed Nocopy values.
