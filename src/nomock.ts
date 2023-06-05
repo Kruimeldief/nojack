@@ -3,13 +3,26 @@ import { formatRegex } from "./util";
 const defaultRegex: RegExp = /^$/;
 
 interface INomockOptions {
-  shouldThrowBuildError: boolean,
+  disableThrowTypeError: boolean,
+  disableThrowDuplicateAdd: boolean,
+  disableThrowBadRemove: boolean,
+  defaultRegexOptions: Partial<IRegexOptions>,
+  enableForcedStringTyping: boolean,
+}
+
+interface INomockConstructorOptions {
+  disableDefaultData: boolean,
 }
 
 interface IRegexOptions {
   flags: string,
-  isWild: boolean,
+  disableWild: boolean,
   enforce?: "brackets" | "separators",
+}
+
+interface ICleanCount {
+  clean: string,
+  count: number,
 }
 
 /**
@@ -30,21 +43,40 @@ export class Nomock<T extends string | number | symbol> {
   /**
    * All constructor options.
    */
-  private readonly _options: INomockOptions;
+  private readonly _options: INomockOptions & INomockConstructorOptions;
 
   /**
-   * Private constructor.
+   * All boolean options are by default `false`.
    */
-  public constructor(options?: INomockOptions)
+  public constructor(options?: Partial<INomockOptions & INomockConstructorOptions>)
   {
-    new Map<string[], string>();
     this._map = new Map<T, Map<string, string>>();
     this._regex = new Map<T, RegExp>();
 
     this._options = {
-      shouldThrowBuildError: true,
+      disableThrowTypeError: false,
+      disableThrowDuplicateAdd: false,
+      disableThrowBadRemove: false,
+      defaultRegexOptions: {
+        flags: 'g',
+        disableWild: false,
+      },
+      disableDefaultData: false,
+      enableForcedStringTyping: false,
     };
+
     Object.assign(this._options, options);
+
+    if (!this._options.disableDefaultData)
+    {
+      this.loadDefaultData();
+    }
+  }
+
+  public setOptions(options: INomockOptions): this
+  {
+    Object.assign(this._options, options);
+    return this;
   }
 
   private getMap(key: T): Map<string, string>
@@ -60,35 +92,81 @@ export class Nomock<T extends string | number | symbol> {
     return map;
   }
 
-  private throwError(error: Error): this
+  private isValidKey(key: T): boolean
   {
-    if (this._options.shouldThrowBuildError)
+    const isValid: boolean = typeof key === "string" ||
+                             typeof key === "number" ||
+                             typeof key === "symbol";
+
+    if (isValid)
+    {
+      throw new TypeError("Key must extend type of string, number or symbol.");
+    }
+
+    return isValid;
+  }
+
+  private validateString(string: string, propertyName: string): string
+  {
+    if (this._options.enableForcedStringTyping)
+    {
+      string = String(string);
+    }
+
+    const isString: boolean = typeof string === "string"
+
+    if (!this._options.disableThrowTypeError && !isString)
+    {
+      throw new TypeError(propertyName + " must be of type string. Value \"" + string + "\" is type of " + typeof string + ".");
+    }
+
+    if (!string.length)
+    {
+      throw new Error(propertyName + " must have length of 1 or more.");
+    }
+
+    return isString ? string : "";
+  }
+
+  private isCopy(map: Map<string, string>, replaceValue: string, mock: string): boolean
+  {
+    const copy = map.get(mock);
+    const isCopy: boolean = typeof copy !== "undefined" && (mock !== copy || mock === replaceValue)
+
+    if (isCopy)
+    {
+      if (!this._options.disableThrowDuplicateAdd)
       {
-        throw error;
+        throw new Error("Value \"" + mock + "\" is already assigned to \"" + copy + "\" and cannot be reassigned to \"" + replaceValue + "\".");
       }
-    return this;
+    }
+
+    return isCopy;
   }
 
   public addSeries(key: T, replaceValue: string, ...mocks: string[]): this
   {
-    if (typeof replaceValue !== 'string')
+    if (!this.isValidKey(key))
     {
-      return this.throwError(
-        new TypeError("Replace value must be of type string.")
-      );
+      return this;
+    }
+
+    if (!(replaceValue = this.validateString(replaceValue, "Replace value")))
+    {
+      return this;
     }
 
     const map = this.getMap(key);
 
-    for (let i = 0, len = mocks.length; i < len; i++)
+    for (let mock of mocks)
     {
-      const mock: string = mocks[i];
-
-      if (typeof mock !== "string")
+      if (!(mock = this.validateString(mock, "Mock value of mocks array")))
       {
-        this.throwError(
-          new TypeError("Mock value on index " + i + " must be of type string.")
-        );
+        continue;
+      }
+
+      if (this.isCopy(map, replaceValue, mock))
+      {
         continue;
       }
 
@@ -100,29 +178,33 @@ export class Nomock<T extends string | number | symbol> {
 
   public addParallels(key: T, replaceValues: string[], ...mocks: string[][]): this
   {
+    if (!this.isValidKey(key))
+    {
+      return this;
+    }
+
     const map = this.getMap(key);
 
     for (let i = 0, len = mocks.length; i < len; i++)
     {
-      const replaceValue: string = replaceValues[i];
+      const replaceValue: string = this.validateString(replaceValues[i], "Replace value of replace values array");
 
-      if (typeof replaceValue !== "string")
+      if (!replaceValue)
       {
-        this.throwError(
-          new TypeError("Replace value on index " + i + " must be of type string.")
-        );
         continue;
       }
 
       for (let j = 0, len = mocks[i].length; i < len; j++)
       {
-        const mock: string = mocks[i][j];
+        const mock: string = this.validateString(mocks[j][i], "Nested mock value of mocks array");
 
-        if (typeof mock !== "string")
+        if (!mock)
         {
-          this.throwError(
-            new TypeError("Mock value on index " + j + " in array on index " + i + " must be of type string.")
-          );
+          continue;
+        }
+
+        if (this.isCopy(map, replaceValue, mock))
+        {
           continue;
         }
 
@@ -135,17 +217,25 @@ export class Nomock<T extends string | number | symbol> {
 
   public addLinks(key: T, replaceValue: string, ...threads: string[][]): this
   {
-    if (typeof replaceValue !== "string")
+    if (!this.isValidKey(key))
     {
-      return this.throwError(
-        new TypeError("Replace value must be of type string.")
-      );
+      return this;
+    }
+
+    if (!(replaceValue = this.validateString(replaceValue, "Replace value")))
+    {
+      return this;
     }
 
     const map = this.getMap(key);
 
     for (const thread of this.createLinks(...threads))
     {
+      if (this.isCopy(map, replaceValue, thread))
+      {
+        continue;
+      }
+
       map.set(thread, replaceValue);
     }
 
@@ -154,22 +244,28 @@ export class Nomock<T extends string | number | symbol> {
 
   public addLinksBidirectional(key: T, replaceValue: string, ...threads: string[][]): this
   {
-    if (typeof replaceValue !== "string")
+    if (!this.isValidKey(key))
     {
-      return this.throwError(
-        new TypeError("Replace value must be of type string.")
-      );
+      return this;
+    }
+
+    if (!(replaceValue = this.validateString(replaceValue, "Replace value")))
+    {
+      return this;
     }
 
     const map = this.getMap(key);
 
-    for (const thread of this.createLinks(...threads))
-    {
-      map.set(thread, replaceValue);
-    }
+    const array: string[] = this.createLinks(...threads)
+      .concat(...this.createLinks(...[...threads].reverse()));
 
-    for (const thread of this.createLinks(...[...threads].reverse()))
+    for (const thread of array)
     {
+      if (this.isCopy(map, replaceValue, thread))
+      {
+        continue;
+      }
+
       map.set(thread, replaceValue);
     }
 
@@ -178,18 +274,28 @@ export class Nomock<T extends string | number | symbol> {
 
   public addLinksMirror(key: T, replaceValue: string, ...threads: string[][]): this
   {
-    if (typeof replaceValue !== "string")
+    if (!this.isValidKey(key))
     {
-      return this.throwError(
-        new TypeError("Replace value must be of type string.")
-      );
+      return this;
+    }
+
+    if (!(replaceValue = this.validateString(replaceValue, "Replace value")))
+    {
+      return this;
     }
 
     const map = this.getMap(key);
 
-    for (const thread of this.createLinks(...threads)
-      .map(v => v + v.slice(0, -1).split('').reverse().join('')))
+    const array: string[] = this.createLinks(...threads)
+      .map(v => v + v.slice(0, -1).split('').reverse().join(''))
+
+    for (const thread of array)
     {
+      if (this.isCopy(map, replaceValue, thread))
+      {
+        continue;
+      }
+
       map.set(thread, replaceValue);
     }
 
@@ -198,18 +304,25 @@ export class Nomock<T extends string | number | symbol> {
 
   public removeSeries(key: T, ...mocks: string[]): this
   {
+    if (!this.isValidKey(key))
+    {
+      return this;
+    }
+
     const map = this.getMap(key);
 
-    for (let i = 0, len = mocks.length; i < len; i++)
-    {
-      const mock: string = mocks[i];
+    
 
-      if (typeof mock !== "string")
+    for (let mock of mocks)
+    {
+      if (!(mock = this.validateString(mock, "Mock value of mocks array")))
       {
-        this.throwError(
-          new TypeError("Mock value on index " + i + " must be of type string.")
-        );
         continue;
+      }
+
+      if (!map.delete(mock) && !this._options.disableThrowBadRemove)
+      {
+        throw new Error("Mock value \"" + mock + "\" of mocks array does not exist and therefore cannot be removed.");
       }
 
       map.delete(mock);
@@ -220,20 +333,18 @@ export class Nomock<T extends string | number | symbol> {
 
   private createLinks(...threads: string[][]): string[]
   {
-    for (let i = 0, len = threads.length; i < len; i++)
+    for (const thread of threads)
     {
-      for (let j = 0, len = threads[i].length; j < len; j++)
+      for (let fiber of thread)
       {
-        if (typeof threads[i][j] !== "string")
+        if (!(fiber = this.validateString(fiber, "Nested thread value of threads array")))
         {
-          this.throwError(
-            new TypeError("Thread value on index " + j + " in array on index " + i + " must be of type string.")
-          );
+          return [];
         }
       }
     }
 
-    let results: string[] = threads[0];
+    let results: string[] = [...threads[0]];
 
     for (let i = 1, len = threads.length; i < len; i++)
     {
@@ -244,8 +355,8 @@ export class Nomock<T extends string | number | symbol> {
   }
 
   private createRegex(keyList: string[],
-                      flags: string,
-                      isWild: boolean,
+                      isWild: boolean = false,
+                      flags: string = "",
                       enforce?: 'brackets' | 'separators')
   {
     let oneChars: string[] = [];
@@ -287,21 +398,18 @@ export class Nomock<T extends string | number | symbol> {
     return defaultRegex;
   }
 
-  public build(options?: Partial<Record<T, IRegexOptions>>): this
+  public build(options?: Partial<Record<T, Partial<IRegexOptions>>>): this
   {
     for (const key of Array.from<T>(this._map.keys()))
     {
       const map = this._map.get(key);
+      const opts = this._options.defaultRegexOptions;
 
-      const opts: IRegexOptions = {
-        flags: 'g',
-        isWild: true,
-      };
       Object.assign(opts, options?.[key]);
 
       const regex = this.createRegex(Array.from(map?.values() || []),
+                                     opts.disableWild,
                                      opts.flags,
-                                     opts.isWild,
                                      opts.enforce);
 
       this._regex.set(key, regex);
@@ -310,7 +418,7 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  private cleanCount(string: string, ...keys: T[]): [string, number]
+  private cleanCount(string: string, ...keys: T[]): ICleanCount
   {
     let count: number = 0;
 
@@ -335,17 +443,20 @@ export class Nomock<T extends string | number | symbol> {
       });
     }
 
-    return [string, count];
+    return {
+      clean: string,
+      count: count,
+    };
   }
 
   public clean(string: string, ...keys: T[]): string
   {
-    return this.cleanCount(string, ...keys)[0];
+    return this.cleanCount(string, ...keys).clean;
   }
 
   public count(string: string, ...keys: T[]): number
   {
-    return this.cleanCount(string, ...keys)[1];
+    return this.cleanCount(string, ...keys).count;
   }
 
   public remove(string: string, ...keys: T[]): string
@@ -363,5 +474,10 @@ export class Nomock<T extends string | number | symbol> {
     }
 
     return string;
+  }
+
+  private loadDefaultData(): void
+  {
+    throw new Error("Not yet implemented.");
   }
 }

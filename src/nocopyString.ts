@@ -20,12 +20,12 @@ export class NocopyString extends Nocopy<string> {
   /**
    * Temporary Nomock object until `filter.ts` is finished.
    */
-  private static readonly nomock = new Nomock<keyof typeof MockTypes>({ shouldThrowBuildError: true })
+  private static readonly nomock = new Nomock<keyof typeof MockTypes>({ disableDefaultData: false })
     .addSeries("confusable", 'E', '€', '3')
     .build({
       "confusable": {
         flags: "gi",
-        isWild: true,
+        disableWild: false,
         enforce: "brackets"
       }
     });
