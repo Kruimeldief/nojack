@@ -1,0 +1,23 @@
+{
+  "remove": {
+    "__comment": [
+      "Remove can be used to whitelist certain strings.",
+      "Note that Nomock has no persistent whitelist; any removed strings can be re-added later.",
+      "Property series: remove individual strings.",
+      "Property ranges: remove a range of characters, i.e. strings with length one"
+    ],
+    "series": [
+
+    ],
+    "ranges": [
+      
+    ]
+  },
+  "add": {
+    "__comment": [
+      "Add can be used to blacklist certain strings.",
+      "Property series: remove individual strings.",
+      "Property ranges: remove a range of characters, i.e. strings with length one"
+    ]
+  }
+}
