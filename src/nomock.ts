@@ -1,6 +1,42 @@
-import { formatRegex } from "./util";
+import { formatRegex, readJson } from "./util";
+import { join } from "path";
 
 const defaultRegex: RegExp = /^$/;
+
+export interface INomockData {
+  add: {
+    series: {
+      replaceValue: string,
+      mocks: string[],
+    }[],
+    ranges: {
+      replaceValue: string,
+      startIndex: string | number,
+      endIndex: string | number,
+    }[],
+    parallels: {
+      replaceValues: string[],
+      mocks: string[],
+    }[],
+    links: {
+      unidirectional: {
+        replaceValue: string,
+        links: string[][],
+      }[],
+      bidirectional: {
+        replaceValue: string,
+        links: string[][],
+      }[],
+      mirror: {
+        replaceValue: string,
+        links: string[][],
+      }[],
+    },
+  },
+  remove: {
+    series: string[],
+  },
+}
 
 interface INomockOptions {
   disableThrowTypeError: boolean,
@@ -215,7 +251,44 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  public addRange(key: T, replaceValue: string, start: number, end: number): this
+  private isValidRangeIndex(index: number | string, propertyName: string): boolean
+  {
+    if (typeof index === "number")
+    {
+      if (index < 0)
+      {
+        if (!this._options.disableThrowTypeError)
+        {
+          throw new TypeError(propertyName + " cannot be a negative number.");
+        }
+        return false;
+      }
+
+      return true;
+    }
+
+    if (this.validateString(index, "Start value") && index.length === 1)
+    {
+      if (!this._options.disableThrowTypeError)
+      {
+        throw new TypeError(propertyName + " must be of type string with length of 1, or a number.");
+      }
+      return false;
+    }
+
+    if (typeof index.codePointAt(0) === "undefined")
+    {
+      if (!this._options.disableThrowTypeError)
+      {
+        throw new Error(propertyName + " cannot be an empty string.");
+      }
+      return false;
+    }
+
+    return true;
+  }
+
+  public addRange(key: T, replaceValue: string, start: string | number, end: string | number): this
   {
     if (!this.isValidKey(key))
     {
@@ -228,6 +301,27 @@ export class Nomock<T extends string | number | symbol> {
     }
 
     const map = this.getMap(key);
+
+    if (!this.isValidRangeIndex(start, "Start value") || !this.isValidRangeIndex(end, "End value"))
+    {
+      return this;
+    }
+
+    if (typeof start === "string")
+    {
+      start = start.codePointAt(0) || -1;
+    }
+
+    if (typeof end === "string")
+    {
+      end = end.codePointAt(0) || -1;
+    }
+
+    if (start === -1 || end === -1)
+    {
+      // Something went wrong in the range index validation.
+      return this;
+    }
 
     for (let i = start, len = end + 1; i < len; i++)
     {
@@ -251,14 +345,14 @@ export class Nomock<T extends string | number | symbol> {
 
     const map = this.getMap(key);
 
-    for (const thread of this.createLinks(...threads))
+    for (const link of this.createLinks(...threads))
     {
-      if (this.isCopy(map, replaceValue, thread))
+      if (this.isCopy(map, replaceValue, link))
       {
         continue;
       }
 
-      map.set(thread, replaceValue);
+      map.set(link, replaceValue);
     }
 
     return this;
@@ -281,14 +375,14 @@ export class Nomock<T extends string | number | symbol> {
     const array: string[] = this.createLinks(...threads)
       .concat(...this.createLinks(...[...threads].reverse()));
 
-    for (const thread of array)
+    for (const link of array)
     {
-      if (this.isCopy(map, replaceValue, thread))
+      if (this.isCopy(map, replaceValue, link))
       {
         continue;
       }
 
-      map.set(thread, replaceValue);
+      map.set(link, replaceValue);
     }
 
     return this;
@@ -311,14 +405,14 @@ export class Nomock<T extends string | number | symbol> {
     const array: string[] = this.createLinks(...threads)
       .map(v => v + v.slice(0, -1).split('').reverse().join(''))
 
-    for (const thread of array)
+    for (const link of array)
     {
-      if (this.isCopy(map, replaceValue, thread))
+      if (this.isCopy(map, replaceValue, link))
       {
         continue;
       }
 
-      map.set(thread, replaceValue);
+      map.set(link, replaceValue);
     }
 
     return this;
@@ -530,6 +624,32 @@ export class Nomock<T extends string | number | symbol> {
 
   private loadDefaultData(): void
   {
-    throw new Error("Not yet implemented.");
+    const json = readJson<INomockData>(join(process.cwd(), 'json', 'nomockData.json'));
+
+    if (typeof json === "undefined")
+    {
+      if (!this._options.disableThrowAddError)
+      {
+        throw new Error("Unable to load default Nomock data.");
+      }
+      return;
+    }
+
+    this.loadData(json);
+  }
+
+  public loadData(data: INomockData): this
+  {
+    if (typeof data !== "object")
+    {
+      if (this._options.disableThrowTypeError)
+      {
+        throw new TypeError("Nomock data must be of type object and use the INomockData interface.");
+      }
+      
+      return this;
+    }
+
+    throw new Error("Not yet implemented");
   }
 }
