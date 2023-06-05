@@ -4,13 +4,13 @@ const defaultRegex: RegExp = /^$/;
 
 interface INomockOptions {
   disableThrowTypeError: boolean,
-  disableThrowDuplicateAdd: boolean,
-  disableThrowBadRemove: boolean,
+  disableThrowAddError: boolean,
+  disableThrowRemoveError: boolean,
   defaultRegexOptions: Partial<IRegexOptions>,
   enableForcedStringTyping: boolean,
 }
 
-interface INomockConstructorOptions {
+interface INomockConstructorOptions extends INomockOptions {
   disableDefaultData: boolean,
 }
 
@@ -20,7 +20,7 @@ interface IRegexOptions {
   enforce?: "brackets" | "separators",
 }
 
-interface ICleanCount {
+interface INomockResult {
   clean: string,
   count: number,
 }
@@ -43,20 +43,20 @@ export class Nomock<T extends string | number | symbol> {
   /**
    * All constructor options.
    */
-  private readonly _options: INomockOptions & INomockConstructorOptions;
+  private readonly _options: INomockConstructorOptions;
 
   /**
    * All boolean options are by default `false`.
    */
-  public constructor(options?: Partial<INomockOptions & INomockConstructorOptions>)
+  public constructor(options?: Partial<INomockConstructorOptions>)
   {
     this._map = new Map<T, Map<string, string>>();
     this._regex = new Map<T, RegExp>();
 
     this._options = {
       disableThrowTypeError: false,
-      disableThrowDuplicateAdd: false,
-      disableThrowBadRemove: false,
+      disableThrowAddError: false,
+      disableThrowRemoveError: false,
       defaultRegexOptions: {
         flags: 'g',
         disableWild: false,
@@ -135,7 +135,7 @@ export class Nomock<T extends string | number | symbol> {
 
     if (isCopy)
     {
-      if (!this._options.disableThrowDuplicateAdd)
+      if (!this._options.disableThrowAddError)
       {
         throw new Error("Value \"" + mock + "\" is already assigned to \"" + copy + "\" and cannot be reassigned to \"" + replaceValue + "\".");
       }
@@ -210,6 +210,28 @@ export class Nomock<T extends string | number | symbol> {
 
         map.set(mock, replaceValue);
       }
+    }
+
+    return this;
+  }
+
+  public addRange(key: T, replaceValue: string, start: number, end: number): this
+  {
+    if (!this.isValidKey(key))
+    {
+      return this;
+    }
+
+    if (!(replaceValue = this.validateString(replaceValue, "Replace value")))
+    {
+      return this;
+    }
+
+    const map = this.getMap(key);
+
+    for (let i = start, len = end + 1; i < len; i++)
+    {
+      map.set(String.fromCodePoint(i), replaceValue);
     }
 
     return this;
@@ -320,7 +342,7 @@ export class Nomock<T extends string | number | symbol> {
         continue;
       }
 
-      if (!map.delete(mock) && !this._options.disableThrowBadRemove)
+      if (!map.delete(mock) && !this._options.disableThrowRemoveError)
       {
         throw new Error("Mock value \"" + mock + "\" of mocks array does not exist and therefore cannot be removed.");
       }
@@ -418,12 +440,25 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  private cleanCount(string: string, ...keys: T[]): ICleanCount
+  private cleanCount(string: string, ...keys: T[]): INomockResult
   {
+    if (!(string = this.validateString(string, "String")))
+    {
+      return {
+        clean: string,
+        count: 0,
+      };
+    }
+
     let count: number = 0;
 
     for (const key of keys)
     {
+      if (!this.isValidKey(key))
+      {
+        continue;
+      }
+
       const regex = this._regex.get(key);
       const map = this._map.get(key);
 
@@ -459,8 +494,18 @@ export class Nomock<T extends string | number | symbol> {
     return this.cleanCount(string, ...keys).count;
   }
 
-  public remove(string: string, ...keys: T[]): string
+  public remove(string: string, ...keys: T[]): INomockResult
   {
+    if (!(string = this.validateString(string, "String")))
+    {
+      return {
+        clean: string,
+        count: 0,
+      }
+    }
+
+    let count: number = 0;
+
     for (const key of keys)
     {
       const regex = this._regex.get(key);
@@ -470,10 +515,17 @@ export class Nomock<T extends string | number | symbol> {
         continue;
       }
 
-      string = string.replace(regex, '');
+      string = string.replace(regex, () =>
+      {
+        count++;
+        return "";
+      });
     }
 
-    return string;
+    return {
+      clean: string,
+      count: count,
+    };
   }
 
   private loadDefaultData(): void
