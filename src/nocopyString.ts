@@ -4,7 +4,8 @@ import { Nomock } from "./nomock";
 /**
  * Enum to be used in `filter.ts` as a preset of Nomock data. See folder `json` in root.
  */
-enum MockTypes {
+enum MockTypes
+{
   emoji,
   confusable,
   invisible,
@@ -38,17 +39,19 @@ export class NocopyString extends Nocopy<string> {
   /**
    * Get the clean string.
    */
-  public get clean(): string {
+  public get clean(): string
+  {
     return typeof this._iClean === 'number'
       ? this._data[this._iClean]
-      : this._data[( this._iClean = this.getIndex(NocopyString.nomock.clean(this.value)) )];
+      : this._data[(this._iClean = this.getIndex(NocopyString.nomock.clean(this.value)))];
   }
 
   /**
    * Define a new string in the Nocopy dictionary.
    * This returns the existing object if string already exists.
    */
-  public constructor(string: string) {
+  public constructor(string: string)
+  {
     super(string);
   }
 }

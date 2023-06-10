@@ -16,7 +16,8 @@ export abstract class Nocopy<T extends string | number | symbol> {
   /**
    * Current Nocopy dictionary size.
    */
-  public static get size(): number {
+  public static get size(): number
+  {
     return this._dictionary.size;
   }
 
@@ -28,7 +29,8 @@ export abstract class Nocopy<T extends string | number | symbol> {
   /**
    * Set the maximum size of the Nocopy dictionary.
    */
-  public static setMaxSize(size: number): void {
+  public static setMaxSize(size: number): void
+  {
     this._maxSize = size;
   }
 
@@ -45,7 +47,8 @@ export abstract class Nocopy<T extends string | number | symbol> {
   /**
    * Value provided to the Nocopy constructor.
    */
-  public get value(): T {
+  public get value(): T
+  {
     return this._data[this._iValue];
   }
 
@@ -53,14 +56,16 @@ export abstract class Nocopy<T extends string | number | symbol> {
    * Define a new value in the Nocopy dictionary.
    * If value already exists, this returns the existing object.
    */
-  public constructor(value: T) {
+  public constructor(value: T)
+  {
     const copy = Nocopy._dictionary.get(value);
 
     // Forced to initialise regardless of an existing copy.
-    this._data = copy?._data || [ value ];
+    this._data = copy?._data || [value];
     this._iValue = 0;
 
-    if (typeof copy !== 'undefined') {
+    if (typeof copy !== 'undefined')
+    {
       return copy;
     }
 
@@ -68,17 +73,20 @@ export abstract class Nocopy<T extends string | number | symbol> {
     Nocopy.deleteOverflow();
   }
 
-  public valueOf(): T {
+  public valueOf(): T
+  {
     return this._data[this._iValue || 0];
   }
 
   /**
    * Returns the index if the value in `this._data`.
    */
-  protected getIndex(value: T): number {
+  protected getIndex(value: T): number
+  {
     const index: number = this._data.indexOf(value);
 
-    if (index >= 0) {
+    if (index >= 0)
+    {
       return index;
     }
 
@@ -90,22 +98,27 @@ export abstract class Nocopy<T extends string | number | symbol> {
    * Delete any Nojack dictionary keys in chronological order if the
    * current dictionary size is greater than the maximum size (if set).
    */
-  private static deleteOverflow(): void {
-    if (typeof this._maxSize === 'undefined') {
+  private static deleteOverflow(): void
+  {
+    if (typeof this._maxSize === 'undefined')
+    {
       return;
     }
 
-    if (this._dictionary.size < this._maxSize) {
+    if (this._dictionary.size < this._maxSize)
+    {
       return;
     }
 
-    if (typeof this.keyIterator === 'undefined') {
+    if (typeof this.keyIterator === 'undefined')
+    {
       this.keyIterator = this._dictionary.keys();
     }
 
     let iteration = this.keyIterator.next();
 
-    if (!iteration.done) {
+    if (!iteration.done)
+    {
       this._dictionary.delete(iteration.value);
       return;
     }
@@ -113,7 +126,8 @@ export abstract class Nocopy<T extends string | number | symbol> {
     this.keyIterator = this._dictionary.keys();
     iteration = this.keyIterator.next();
 
-    if (!iteration.done) {
+    if (!iteration.done)
+    {
       this._dictionary.delete(iteration.value);
     }
   }

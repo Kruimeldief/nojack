@@ -1,7 +1,8 @@
 /**
  * Nojack settings.
  */
-export interface INojackOptions {
+export interface INojackOptions
+{
 
   /**
    * Placeholder character or string to replace any matching blacklisted strings.
@@ -42,9 +43,12 @@ export class Nojack<T> {
   /**
    * Create filter with options.
    */
-  public constructor(options?: INojackOptions) {
-    if (typeof options === 'object') {
-      if (typeof options.placeholder !== 'string') {
+  public constructor(options?: INojackOptions)
+  {
+    if (typeof options === 'object')
+    {
+      if (typeof options.placeholder !== 'string')
+      {
         delete options.placeholder;
       }
     }
@@ -57,31 +61,40 @@ export class Nojack<T> {
     this._whitelist = new Map<string, boolean>();
   }
 
-  public blacklist(category: T, ...strings: string[]): void {
-    for (let i = 0, len = strings.length; i < len; i++) {
+  public blacklist(category: T, ...strings: string[]): void
+  {
+    for (let i = 0, len = strings.length; i < len; i++)
+    {
       this._blacklist.set(String(strings[i]), category);
     }
   }
 
-  public blacklistRemove(...strings: string[]): void {
-    for (let i = 0, len = strings.length; i < len; i++) {
+  public blacklistRemove(...strings: string[]): void
+  {
+    for (let i = 0, len = strings.length; i < len; i++)
+    {
       this._blacklist.delete(String(strings[i]));
     }
   }
 
-  public whitelist(...strings: string[]): void {
-    for (let i = 0, len = strings.length; i < len; i++) {
+  public whitelist(...strings: string[]): void
+  {
+    for (let i = 0, len = strings.length; i < len; i++)
+    {
       this._whitelist.set(String(strings[i]), true);
     }
   }
 
-  public whitelistRemove(...strings: string[]): void {
-    for (let i = 0, len = strings.length; i < len; i++) {
+  public whitelistRemove(...strings: string[]): void
+  {
+    for (let i = 0, len = strings.length; i < len; i++)
+    {
       this._whitelist.delete(String(strings[i]));
     }
   }
 
-  public indexWhitelisted(strings: string | string[]): [number, number][] {
+  public indexWhitelisted(strings: string | string[]): [number, number][]
+  {
     const results: [number, number][] = [];
 
     const list: string[] = typeof strings === 'string'
@@ -92,13 +105,15 @@ export class Nojack<T> {
     let parts: number = Math.min(this._maxParts, length);
     let index: number = length - parts + 1;
 
-    while (index-- || --parts && (index = length - parts)) {
+    while (index-- || --parts && (index = length - parts))
+    {
 
       const slice: string = list
         .slice(index, index + parts)
         .join(this._splitChar);
 
-      if (this._whitelist.has(slice)) {
+      if (this._whitelist.has(slice))
+      {
         const start: number = list
           .slice(0, index)
           .join(this._splitChar)
@@ -111,10 +126,10 @@ export class Nojack<T> {
   }
 
   public detectProfanity(strings: string | string[],
-                         forEach: (profanity: string,
-                                   category: T,
-                                   start: number,
-                                   end: number) => any)
+    forEach: (profanity: string,
+      category: T,
+      start: number,
+      end: number) => any)
   {
     const list: string[] = typeof strings === 'string'
       ? String(strings).split(this._splitChar)
@@ -128,7 +143,8 @@ export class Nojack<T> {
     let lenList: number[] | undefined;
 
     slicer:
-    while (index-- || --parts && (index = length - parts)) {
+    while (index-- || --parts && (index = length - parts))
+    {
 
       const end: number = index + parts;
 
@@ -138,25 +154,30 @@ export class Nojack<T> {
 
       const category: T | undefined = this._blacklist.get(slice);
 
-      if (typeof category === 'undefined') {
+      if (typeof category === 'undefined')
+      {
         continue;
       }
 
-      if (typeof whitelistIndexes === 'undefined') {
+      if (typeof whitelistIndexes === 'undefined')
+      {
         whitelistIndexes = this.indexWhitelisted(strings);
       }
 
-      for (const indexes of whitelistIndexes) {
+      for (const indexes of whitelistIndexes)
+      {
         const hasIntersection: boolean = index <= indexes[0] && end >= indexes[1]
           || index >= indexes[0] && index <= indexes[1]
           || end >= indexes[0] && end <= indexes[1];
 
-        if (hasIntersection) {
+        if (hasIntersection)
+        {
           continue slicer;
         }
       }
 
-      if (typeof lenList === 'undefined') {
+      if (typeof lenList === 'undefined')
+      {
         lenList = list.map(v => v.length);
       }
 
@@ -168,23 +189,28 @@ export class Nojack<T> {
     }
   }
 
-  public isProfane(string: string): boolean {
+  public isProfane(string: string): boolean
+  {
     return Boolean(this.findProfanity(string).length);
   }
 
-  public findProfanity(string: string): T[] {
+  public findProfanity(string: string): T[]
+  {
     const categories: T[] = [];
 
-    this.detectProfanity(string, (_profanity, category) => {
+    this.detectProfanity(string, (_profanity, category) =>
+    {
       categories.push(category);
     });
 
     return categories;
   }
 
-  public cleanProfanity(string: string): string {
-    this.detectProfanity(string, (profanity, _category, start, end) => {
-      string = string.slice(0, start) + this._placeholder.repeat(profanity.length) + string.slice(end)
+  public cleanProfanity(string: string): string
+  {
+    this.detectProfanity(string, (profanity, _category, start, end) =>
+    {
+      string = string.slice(0, start) + this._placeholder.repeat(profanity.length) + string.slice(end);
     });
 
     return string;

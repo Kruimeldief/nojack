@@ -3,7 +3,8 @@ import { join } from "path";
 
 const defaultRegex: RegExp = /^$/;
 
-export interface INomockData {
+export interface INomockData
+{
   add: {
     series: {
       replaceValue: string,
@@ -38,7 +39,8 @@ export interface INomockData {
   },
 }
 
-interface INomockOptions {
+interface INomockOptions
+{
   disableThrowTypeError: boolean,
   disableThrowAddError: boolean,
   disableThrowRemoveError: boolean,
@@ -46,17 +48,20 @@ interface INomockOptions {
   enableForcedStringTyping: boolean,
 }
 
-interface INomockConstructorOptions extends INomockOptions {
+interface INomockConstructorOptions extends INomockOptions
+{
   disableDefaultData: boolean,
 }
 
-interface IRegexOptions {
+interface IRegexOptions
+{
   flags: string,
   disableWild: boolean,
   enforce?: "brackets" | "separators",
 }
 
-interface INomockResult {
+interface INomockResult
+{
   clean: string,
   count: number,
 }
@@ -131,8 +136,8 @@ export class Nomock<T extends string | number | symbol> {
   private isValidKey(key: T): boolean
   {
     const isValid: boolean = typeof key === "string" ||
-                             typeof key === "number" ||
-                             typeof key === "symbol";
+      typeof key === "number" ||
+      typeof key === "symbol";
 
     if (isValid)
     {
@@ -149,7 +154,7 @@ export class Nomock<T extends string | number | symbol> {
       string = String(string);
     }
 
-    const isString: boolean = typeof string === "string"
+    const isString: boolean = typeof string === "string";
 
     if (!this._options.disableThrowTypeError && !isString)
     {
@@ -167,7 +172,7 @@ export class Nomock<T extends string | number | symbol> {
   private isCopy(map: Map<string, string>, replaceValue: string, mock: string): boolean
   {
     const copy = map.get(mock);
-    const isCopy: boolean = typeof copy !== "undefined" && (mock !== copy || mock === replaceValue)
+    const isCopy: boolean = typeof copy !== "undefined" && (mock !== copy || mock === replaceValue);
 
     if (isCopy)
     {
@@ -403,7 +408,7 @@ export class Nomock<T extends string | number | symbol> {
     const map = this.getMap(key);
 
     const array: string[] = this.createLinks(...threads)
-      .map(v => v + v.slice(0, -1).split('').reverse().join(''))
+      .map(v => v + v.slice(0, -1).split('').reverse().join(''));
 
     for (const link of array)
     {
@@ -427,7 +432,7 @@ export class Nomock<T extends string | number | symbol> {
 
     const map = this.getMap(key);
 
-    
+
 
     for (let mock of mocks)
     {
@@ -471,43 +476,51 @@ export class Nomock<T extends string | number | symbol> {
   }
 
   private createRegex(keyList: string[],
-                      isWild: boolean = false,
-                      flags: string = "",
-                      enforce?: 'brackets' | 'separators')
+    isWild: boolean = false,
+    flags: string = "",
+    enforce?: 'brackets' | 'separators')
   {
     let oneChars: string[] = [];
     let multiChars: string[] = [];
 
-    for (const key of keyList) {
-      if (enforce === "brackets" || key.length === 1 && isWild) {
+    for (const key of keyList)
+    {
+      if (enforce === "brackets" || key.length === 1 && isWild)
+      {
         oneChars.push(key);
       }
-      else {
+      else
+      {
         multiChars.push(key);
       }
     }
 
-    if (!oneChars.length && !multiChars.length) {
+    if (!oneChars.length && !multiChars.length)
+    {
       return defaultRegex;
     }
 
     const modify: (list: string[]) => string[] = (list) => list
       .sort()
       .filter((v, i, arr) => !i || v === arr[i - 1])
-      .map(v => {
+      .map(v =>
+      {
         const tag: string = isWild ? "" : "\\b";
         return tag + formatRegex(v) + tag;
       });
 
-    if (oneChars.length && !multiChars.length) {
+    if (oneChars.length && !multiChars.length)
+    {
       return new RegExp("[" + modify(oneChars).join('') + "]", flags);
     }
 
-    if (!oneChars.length && multiChars.length) {
+    if (!oneChars.length && multiChars.length)
+    {
       return new RegExp(modify(multiChars).join("|"), flags);
     }
 
-    if (oneChars.length && multiChars.length) {
+    if (oneChars.length && multiChars.length)
+    {
       return new RegExp("[" + modify(oneChars).join('') + "]|" + modify(multiChars).join("|"), flags);
     }
 
@@ -524,9 +537,9 @@ export class Nomock<T extends string | number | symbol> {
       Object.assign(opts, options?.[key]);
 
       const regex = this.createRegex(Array.from(map?.values() || []),
-                                     opts.disableWild,
-                                     opts.flags,
-                                     opts.enforce);
+        opts.disableWild,
+        opts.flags,
+        opts.enforce);
 
       this._regex.set(key, regex);
     }
@@ -595,7 +608,7 @@ export class Nomock<T extends string | number | symbol> {
       return {
         clean: string,
         count: 0,
-      }
+      };
     }
 
     let count: number = 0;
@@ -646,7 +659,7 @@ export class Nomock<T extends string | number | symbol> {
       {
         throw new TypeError("Nomock data must be of type object and use the INomockData interface.");
       }
-      
+
       return this;
     }
 
