@@ -3,38 +3,32 @@ import { join } from "path";
 
 const defaultRegex: RegExp = /^$/;
 
+enum LinkType
+{
+  unidirectional,
+  bidirectional,
+  mirror,
+}
+
 export interface INomockData
 {
-  add: {
-    series: {
+  add?: {
+    series?: {
       replaceValue: string,
       mocks: string[],
     }[],
-    ranges: {
+    ranges?: {
       replaceValue: string,
       startIndex: string | number,
       endIndex: string | number,
     }[],
-    parallels: {
+    parallels?: {
       replaceValues: string[],
       mocks: string[],
     }[],
-    links: {
-      unidirectional: {
-        replaceValue: string,
-        links: string[][],
-      }[],
-      bidirectional: {
-        replaceValue: string,
-        links: string[][],
-      }[],
-      mirror: {
-        replaceValue: string,
-        links: string[][],
-      }[],
-    },
+    links?: Partial< Record< keyof typeof LinkType, { replaceValue: string, links: string[][] }[] > >,
   },
-  remove: {
+  remove?: {
     series: string[],
   },
 }
@@ -336,7 +330,7 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  public addLinks(key: T, replaceValue: string, ...threads: string[][]): this
+  public addLinksUnidirectional(key: T, replaceValue: string, ...links: string[][]): this
   {
     if (!this.isValidKey(key))
     {
@@ -350,7 +344,7 @@ export class Nomock<T extends string | number | symbol> {
 
     const map = this.getMap(key);
 
-    for (const link of this.createLinks(...threads))
+    for (const link of this.createLinks(...links))
     {
       if (this.isCopy(map, replaceValue, link))
       {
@@ -363,7 +357,7 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  public addLinksBidirectional(key: T, replaceValue: string, ...threads: string[][]): this
+  public addLinksBidirectional(key: T, replaceValue: string, ...link: string[][]): this
   {
     if (!this.isValidKey(key))
     {
@@ -377,8 +371,8 @@ export class Nomock<T extends string | number | symbol> {
 
     const map = this.getMap(key);
 
-    const array: string[] = this.createLinks(...threads)
-      .concat(...this.createLinks(...[...threads].reverse()));
+    const array: string[] = this.createLinks(...link)
+      .concat(...this.createLinks(...[...link].reverse()));
 
     for (const link of array)
     {
@@ -393,7 +387,7 @@ export class Nomock<T extends string | number | symbol> {
     return this;
   }
 
-  public addLinksMirror(key: T, replaceValue: string, ...threads: string[][]): this
+  public addLinksMirror(key: T, replaceValue: string, ...link: string[][]): this
   {
     if (!this.isValidKey(key))
     {
@@ -407,7 +401,7 @@ export class Nomock<T extends string | number | symbol> {
 
     const map = this.getMap(key);
 
-    const array: string[] = this.createLinks(...threads)
+    const array: string[] = this.createLinks(...link)
       .map(v => v + v.slice(0, -1).split('').reverse().join(''));
 
     for (const link of array)
@@ -648,10 +642,10 @@ export class Nomock<T extends string | number | symbol> {
       return;
     }
 
-    this.loadData(json);
+    this.loadData(0 as T, json);
   }
 
-  public loadData(data: INomockData): this
+  public loadData(key: T, data: Partial<INomockData>): this
   {
     if (typeof data !== "object")
     {
@@ -663,6 +657,69 @@ export class Nomock<T extends string | number | symbol> {
       return this;
     }
 
-    throw new Error("Not yet implemented");
+    if (typeof data.add !== "undefined")
+    {
+      if (typeof data.add.series !== "undefined")
+      {
+        for (const series of data.add.series)
+        {
+          this.addSeries(key, series.replaceValue, ...series.mocks);
+        }
+      }
+
+      if (typeof data.add.ranges !== "undefined")
+      {
+        for (const range of data.add.ranges)
+        {
+          this.addRange(key, range.replaceValue, range.startIndex, range.endIndex);
+        }
+      }
+
+      if (typeof data.add.parallels !== "undefined")
+      {
+        for (const parallel of data.add.parallels)
+        {
+          this.addParallels(key, parallel.replaceValues, parallel.mocks);
+        }
+      }
+
+      if (typeof data.add.links !== "undefined")
+      {
+        if (typeof data.add.links.unidirectional !== "undefined")
+        {
+          for (const link of data.add.links.unidirectional)
+          {
+            this.addLinksUnidirectional(key, link.replaceValue, ...link.links);
+          }
+        }
+
+        if (typeof data.add.links.bidirectional !== "undefined")
+        {
+          for (const link of data.add.links.bidirectional)
+          {
+            this.addLinksBidirectional(key, link.replaceValue, ...link.links);
+          }
+        }
+
+        if (typeof data.add.links.mirror !== "undefined")
+        {
+          for (const link of data.add.links.mirror)
+          {
+            this.addLinksMirror(key, link.replaceValue, ...link.links);
+          }
+        }
+      }
+    }
+
+    // Remove strings after adding them.
+    if (typeof data.remove !== "undefined")
+    {
+      if (typeof data.remove.series !== "undefined")
+      {
+        this.removeSeries(key, ...data.remove.series);
+      }
+    }
+
+    return this;
   }
 }
