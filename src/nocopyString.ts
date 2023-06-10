@@ -1,5 +1,5 @@
-import { Nocopy } from "./nocopy";
-import { Nomock } from "./nomock";
+import { Nocopy } from "./nocopy.js";
+import { Nomock } from "./nomock.js";
 
 /**
  * Enum to be used in `filter.ts` as a preset of Nomock data. See folder `json` in root.

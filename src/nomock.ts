@@ -1,4 +1,4 @@
-import { formatRegex, readJson } from "./util";
+import { formatRegex, readJson } from "./util.js";
 import { join } from "path";
 
 const defaultRegex: RegExp = /^$/;

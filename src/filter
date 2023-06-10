@@ -1,6 +1,6 @@
-import { NocopyString } from "./nocopyString";
-import { INojackOptions, Nojack } from "./nojack";
-import { Nomock } from "./nomock";
+import { NocopyString } from "./nocopyString.js";
+import { INojackOptions, Nojack } from "./nojack.js";
+import { Nomock } from "./nomock.js";
 
 /**
  * Filter settings.
