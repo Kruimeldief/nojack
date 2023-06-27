@@ -10,6 +10,11 @@ export interface INojackOptions
   placeholder?: string,
 }
 
+interface IEntry<T> {
+  category: T,
+  list: string[],
+}
+
 /**
  * Nojack.
  */
@@ -26,9 +31,44 @@ export class Nojack<T> {
   private _blacklist: Map<string, T>;
 
   /**
+   * String-category tuple of all added blacklist values.
+   */
+  public get blacklistValues(): IEntry<T>[]
+  {
+    const list: IEntry<T>[] = [];
+
+    for (const entry of this._blacklist.entries())
+    {
+      const index: number = list.findIndex(v => v.category === entry[1]);
+
+      if (index === -1)
+      {
+        list.push({
+          category: entry[1],
+          list: [entry[0]]
+        });
+      }
+      else
+      {
+        list[index].list.push(entry[0]);
+      }
+    }
+
+    return list;
+  }
+
+  /**
    * Hash-table with whitelisted strings.
    */
   private _whitelist: Map<string, boolean>;
+
+  /**
+   * Array of whitelisted strings.
+   */
+  public get whitelistValues(): string[]
+  {
+    return Array.from(this._whitelist.keys());
+  }
 
   /**
    * Character on which to split a string.
@@ -61,36 +101,44 @@ export class Nojack<T> {
     this._whitelist = new Map<string, boolean>();
   }
 
-  public blacklist(category: T, ...strings: string[]): void
+  public blacklist(category: T, ...strings: string[]): this
   {
     for (let i = 0, len = strings.length; i < len; i++)
     {
       this._blacklist.set(String(strings[i]), category);
     }
+
+    return this;
   }
 
-  public blacklistRemove(...strings: string[]): void
+  public blacklistRemove(...strings: string[]): this
   {
     for (let i = 0, len = strings.length; i < len; i++)
     {
       this._blacklist.delete(String(strings[i]));
     }
+
+    return this;
   }
 
-  public whitelist(...strings: string[]): void
+  public whitelist(...strings: string[]): this
   {
     for (let i = 0, len = strings.length; i < len; i++)
     {
       this._whitelist.set(String(strings[i]), true);
     }
+
+    return this;
   }
 
-  public whitelistRemove(...strings: string[]): void
+  public whitelistRemove(...strings: string[]): this
   {
     for (let i = 0, len = strings.length; i < len; i++)
     {
       this._whitelist.delete(String(strings[i]));
     }
+
+    return this;
   }
 
   public indexWhitelisted(strings: string | string[]): [number, number][]
@@ -107,7 +155,6 @@ export class Nojack<T> {
 
     while (index-- || --parts && (index = length - parts))
     {
-
       const slice: string = list
         .slice(index, index + parts)
         .join(this._splitChar);
